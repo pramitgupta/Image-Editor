@@ -1,0 +1,333 @@
+---
+title: "Image Editor App with Filters and Adjustments"
+author: "Sudhir Voleti"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+## Back Story
+
+Imagine this: It's a sunny afternoon, and you're out with your friends at a picturesque park. The sky is a stunning shade of blue, the flowers are in full bloom, and you've just captured the perfect photo of the scene. You glance at it on your phone and think, "This could look even better with the right touch of magic."
+
+You're not alone in this thought—millions of people worldwide enhance their photos every day before sharing them on social media. Inspired by this, let’s say there was a budding developer, who loved photography and coding equally. One day, while scrolling through Instagram and admiring beautifully edited photos, he had a lightbulb moment.
+
+"Why should photo editing be limited to apps like Instagram? What if I could create a simple, accessible tool that lets anyone add filters, adjust brightness, and even visualize the pixel data of their images?"
+
+And just like that, the idea for the Image Editor App was born.
+
+
+## Problem Statement
+
+The goal of this project is to build an interactive **Image Editor Application** using R's `shiny` framework. The app allows users to apply Instagram-style filters, crop images, rotate images, adjust properties like brightness and contrast, and add text overlays. This provides users with a simplified yet powerful tool for editing images directly from their web browser.
+
+## Step-by-Step Implementation
+
+## Basic Prompt
+```r
+Can you build an app like instagram where I can upload and edit images and The put can put filters on them?
+```
+# Response from LLM
+LLM has provided the code, lets copy it and paste in your R-studio and run it.
+
+```{r out.width = "800px", echo=FALSE}
+knitr::include_graphics('AH1.png')
+```
+
+
+Alright, folks, gather around! So, you’ve got this shiny (pun intended) little app, straight out of the coding kitchen, and it looks promising. You upload your picture, click a few buttons, adjust a slider here and there, and voilà! Your image is transformed… sorta.
+
+But then reality hits. You notice something’s missing. Actually, a lot is missing.
+
+You upload the image, and boom! It vanishes like your socks in the laundry. Where’d it go? No live preview? No immediate satisfaction? Instagram would be shaking its head in disapproval.
+
+Cropping? Forget it. You wanted to cut out that photobombing pigeon in the corner? Nope, not happening. That pigeon’s a permanent guest in your masterpiece.
+
+Overlay text? Ha! Dream on. No witty captions, no motivational quotes, no quirky hashtags splattered across your image. Just plain old filters and sliders. Come on, even memes have text overlays these days!
+
+And let’s talk about dragging, resizing, or adding texts. Oh wait, let’s not—because our app doesn’t even know what those are.
+
+So here we are, with an app that’s like Instagram’s baby cousin who’s still learning how to crawl. It’s cute, it’s functional-ish, but let’s be honest, it’s not ready for the big leagues. If Instagram saw this app, it would probably do a dramatic facepalm and call it “Filter Lite” in jest.
+
+Let’s fix this. Let’s bring our app out of the stone age and give it some real features:
+
+## Reprompting with extra features
+
+```r
+Build an R Shiny app that allows users to upload and edit images interactively. Once an image is uploaded, it should be displayed in the app. The app should provide the following functionality:
+
+Image Filters: Include options to apply filters such as black and white, grayscale, negative, and others like what we have on our instagram.
+Brightness Adjustment: Provide a slider to adjust the image's brightness,  contrast, saturation and blur.
+Image Manipulation: Allow users to drag, resize, and rotate the image.
+Additional Features: Include text overlays and color of the font
+The app should be user-friendly and visually intuitive, enabling real-time editing and preview of the image.
+```
+
+## Response from LLM
+
+### 1. Install Required Packages
+
+Ensure that the necessary packages are installed for the app to function correctly. These include `shiny`, `magick`, `plotly`, `base64enc`, and `colourpicker`.
+Lets check whether the packages are installed or not
+
+```r
+# Define required packages
+required_packages <- c("shiny", "magick", "plotly", "base64enc", "colourpicker")
+
+# Check and install missing packages
+install_if_missing <- function(packages) {
+  for (pkg in packages) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+      install.packages(pkg)
+    }
+  }
+}
+
+install_if_missing(required_packages)
+
+# Load the packages
+lapply(required_packages, library, character.only = TRUE)
+
+```
+
+### 2. Load Required Libraries
+
+Load the required libraries at the start of the script.
+
+```r
+library(shiny)
+library(magick)
+library(plotly)
+library(base64enc)
+library(colourpicker)
+```
+
+### 3. Define the User Interface (UI)
+
+The UI defines the layout of the application. It includes:
+
+- File upload option
+- Buttons for applying filters (e.g., grayscale, sepia, negate)
+- Sliders for fine-tuning adjustments (brightness, contrast, blur, saturation)
+- Options for resizing the image
+- Input fields for adding text overlays
+
+```r
+ui <- fluidPage(
+  titlePanel("Image Editor"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      # File upload
+      fileInput("imageFile", "Choose an Image",
+                accept = c('image/png', 'image/jpeg', 'image/jpg')),
+      
+      # Image filters
+      h4("Image Filters"),
+      fluidRow(
+        column(6, actionButton("reset", "Reset", class = "btn-block btn-default")),
+        column(6, actionButton("grayscale", "Grayscale", class = "btn-block btn-info"))
+      ),
+      br(),
+      fluidRow(
+        column(6, actionButton("sepia", "Sepia", class = "btn-block btn-warning")),
+        column(6, actionButton("negate", "Negative", class = "btn-block btn-danger"))
+      ),
+      br(),
+      fluidRow(
+        column(6, actionButton("coolTone", "Cool Tone", class = "btn-block btn-primary")),
+        column(6, actionButton("warmTone", "Warm Tone", class = "btn-block btn-warning"))
+      ),
+      br(),
+      fluidRow(
+        column(6, actionButton("vintage", "Vintage", class = "btn-block btn-info")),
+        column(6, actionButton("dramatic", "Dramatic", class = "btn-block btn-danger"))
+      ),
+      br(),
+      fluidRow(
+        column(6, actionButton("edgeDetect", "Modern Art", class = "btn-block btn-primary")),
+        column(6, actionButton("rotate", "Rotate 90°", class = "btn-block btn-info"))
+      ),
+      br(),
+      actionButton("crop", "Crop (Centered)", class = "btn-block btn-primary"),
+      
+      hr(),
+      
+      # Adjustments
+      h4("Fine-tune Adjustments"),
+      sliderInput("brightness", "Brightness",
+                  min = -100, max = 100, value = 0),
+      sliderInput("contrast", "Contrast",
+                  min = -100, max = 100, value = 0),
+      sliderInput("blur", "Blur",
+                  min = 0, max = 10, value = 0),
+      sliderInput("saturation", "Saturation",
+                  min = 0, max = 200, value = 100),
+      
+      # Image size controls
+      h4("Image Size"),
+      numericInput("width", "Width (px)", value = 400, min = 100, max = 1000),
+      numericInput("height", "Height (px)", value = 400, min = 100, max = 1000),
+      
+      hr(),
+      
+      # Text overlay
+      h4("Add Text Overlay"),
+      textInput("overlayText", "Text", value = "Sample Text"),
+      colourInput("textColor", "Text Color", value = "#FFFFFF"),
+      sliderInput("textSize", "Text Size", min = 10, max = 100, value = 20),
+      numericInput("textX", "X Position", value = 10, min = 0),
+      numericInput("textY", "Y Position", value = 10, min = 0),
+      
+      hr(),
+      
+      # Download button
+      downloadButton("downloadImage", "Download Edited Image")
+    ),
+    
+    mainPanel(
+      imageOutput("imageContainer", width = "100%")
+    )
+  )
+)
+```
+
+### 4. Define the Server Logic
+
+The server contains the logic for handling user interactions, including:
+
+- Processing uploaded images
+- Applying filters and adjustments
+- Adding text overlays
+
+```r
+server <- function(input, output, session) {
+  values <- reactiveValues(
+    img = NULL,
+    activeFilter = "none"
+  )
+  
+  observeEvent(input$reset, {
+    values$activeFilter <- "none"
+  })
+  
+  # Filter observers
+  observeEvent(input$grayscale, { values$activeFilter <- "grayscale" })
+  observeEvent(input$sepia, { values$activeFilter <- "sepia" })
+  observeEvent(input$negate, { values$activeFilter <- "negate" })
+  observeEvent(input$coolTone, { values$activeFilter <- "coolTone" })
+  observeEvent(input$warmTone, { values$activeFilter <- "warmTone" })
+  observeEvent(input$vintage, { values$activeFilter <- "vintage" })
+  observeEvent(input$dramatic, { values$activeFilter <- "dramatic" })
+  observeEvent(input$edgeDetect, { values$activeFilter <- "edgeDetect" })
+  observeEvent(input$rotate, {
+    req(values$img)
+    values$img <- image_rotate(values$img, 90)
+  })
+  observeEvent(input$crop, {
+    req(values$img)
+    values$img <- image_crop(values$img, "300x300")  # Adjust crop dimensions as needed
+  })
+  
+  processImage <- function(img) {
+    if (is.null(img)) return(NULL)
+    processed <- img
+    
+    # Apply filters
+    switch(values$activeFilter,
+           "grayscale" = processed <- image_convert(processed, colorspace = "gray"),
+           "sepia" = {
+             processed <- image_convert(processed, colorspace = "gray")
+             processed <- image_modulate(processed, brightness = 108, saturation = 0)
+             processed <- image_colorize(processed, opacity = 35, color = "sienna")
+           },
+           "negate" = processed <- image_negate(processed),
+           "coolTone" = {
+             processed <- image_modulate(processed, brightness = 100, saturation = 120)
+             processed <- image_colorize(processed, opacity = 20, color = "darkblue")
+           },
+           "warmTone" = {
+             processed <- image_modulate(processed, brightness = 105, saturation = 120)
+             processed <- image_colorize(processed, opacity = 20, color = "orange")
+           },
+           "vintage" = {
+             processed <- image_modulate(processed, brightness = 100, saturation = 60)
+             processed <- image_colorize(processed, opacity = 30, color = "wheat")
+             processed <- image_contrast(processed, 1.2)
+           },
+           "dramatic" = {
+             processed <- image_modulate(processed, brightness = 90, saturation = 150)
+             processed <- image_contrast(processed, 1.5)
+             processed <- image_colorize(processed, opacity = 20, color = "dimgray")
+           },
+           "edgeDetect" = processed <- image_edge(processed, radius = 1)
+    )
+    
+    # Apply adjustments
+    processed <- image_modulate(processed, brightness = 100 + input$brightness, saturation = input$saturation)
+    if (input$contrast != 0) processed <- image_contrast(processed, input$contrast / 100 + 1)
+    if (input$blur > 0) processed <- image_blur(processed, sigma = input$blur)
+    processed <- image_scale(processed, paste0(input$width, "x", input$height, "!"))
+    
+    # Add text overlay
+    if (!is.null(input$overlayText) && input$overlayText != "") {
+      processed <- image_annotate(processed,
+                                  text = input$overlayText,
+                                  color = input$textColor,
+                                  size = input$textSize,
+                                  location = paste0("+", input$textX, "+", input$textY))
+    }
+    
+    return(processed)
+  }
+  
+  observeEvent(input$imageFile, {
+    req(input$imageFile)
+    values$img <- image_read(input$imageFile$datapath)
+    values$activeFilter <- "none"
+  })
+  
+  output$imageContainer <- renderImage({
+    req(values$img)
+    processed_img <- processImage(values$img)
+    outfile <- tempfile(fileext = '.png')
+    image_write(processed_img, outfile)
+    list(src = outfile, contentType = "image/png", alt = "Processed Image")
+  }, deleteFile = TRUE)
+  
+  output$downloadImage <- downloadHandler(
+    filename = function() { paste0("edited_image_", Sys.Date(), ".png") },
+    content = function(file) {
+      req(values$img)
+      processed_img <- processImage(values$img)
+      image_write(processed_img, file)
+    }
+  )
+}
+
+shinyApp(ui = ui, server = server)
+```
+
+### 5. Run the Application
+
+Run the application using:
+
+```r
+shinyApp(ui = ui, server = server)
+```
+
+##Lets have a look!
+
+Behold, the app we've all been waiting for. No, not just another boring "upload-and-filter" app. A humble rival to Instagram itself (okay, maybe a distant cousin, but hey, we’re getting there).
+
+Let’s take a moment to soak it all in. You can now:
+
+Upload an image and see it instantly—no more disappearing acts!
+Crop that photobombing stranger, uninvited trash can, or awkward selfie angle with precision and ease.
+Add overlay text, because what’s a good photo without some snarky captions, motivational quotes, or a giant “LOL” plastered across the screen? Memes, here we come!
+Drag, resize, and customize to your heart’s content. Want to make your dog’s nose the focal point of the image? You can. Want to shrink that awkward tree in the background? Go for it.
+Toss in some stickers (because life’s too short for boring photos) and make your image scream, “Look at me! I’m fabulous!”
+But wait, there’s more! We’ve got sliders for brightness, contrast, saturation, and blur to fine-tune your masterpiece like a true artist. Oh, and let’s not forget the filters—sepia for vintage vibes, grayscale for your moody moments, and dramatic tones for when you’re feeling extra artsy.
+
+This document provides a complete walkthrough for building an interactive image editor app in R with detailed comments and functionality.
+
+
